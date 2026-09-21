@@ -1,0 +1,17 @@
+{
+  "name": "leave-request-discord-demo",
+  "version": "1.0.0",
+  "description": "Academic seminar demo: Employee Leave Request API integrated with Discord Webhook and Discord Bot",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.27.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "uuid": "^9.0.1"
+  }
+}
