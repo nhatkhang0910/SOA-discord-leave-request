@@ -89,8 +89,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.deferReply({ ephemeral: true });
 
         await callLeaveApi(
-          `/api/boss/leave-requests/${requestId}/approve`,
+          "/api/discord/result",
           {
+            requestId,
+            action: "approve",
             reviewerName: interaction.user.username
           }
         );
@@ -141,10 +143,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.deferReply({ ephemeral: true });
 
       await callLeaveApi(
-        `/api/boss/leave-requests/${requestId}/reject`,
+        "/api/discord/result",
         {
+          requestId,
+          action: "reject",
           reviewerName: interaction.user.username,
-          reasonForRejection: reason
+          reason
         }
       );
 
