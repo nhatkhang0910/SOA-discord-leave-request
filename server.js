@@ -115,6 +115,66 @@ app.get(
 // MANAGER API
 // ========================================
 
+// Discord Bot sends the manager's decision back to the API.
+app.post("/api/discord/result", async (req, res) => {
+  try {
+    const { requestId, action, reviewerName, reason } = req.body || {};
+
+    if (!requestId || !["approve", "reject"].includes(action)) {
+      return res.status(400).json({
+        error: "Invalid requestId or action"
+      });
+    }
+
+    if (
+      action === "reject" &&
+      (typeof reason !== "string" || reason.trim().length < 3)
+    ) {
+      return res.status(400).json({
+        error: "Rejection reason must contain at least 3 characters"
+      });
+    }
+
+    const existing = store.getById(requestId);
+    if (!existing) {
+      return res.status(404).json({
+        error: "Leave request not found"
+      });
+    }
+
+    if (existing.status !== "pending") {
+      return res.status(409).json({
+        error: "This leave request has already been processed"
+      });
+    }
+
+    const updated = store.update(requestId, {
+      status: action === "approve" ? "approved" : "rejected",
+      reviewedBy: reviewerName || "Manager",
+      rejectionReason: action === "reject" ? reason.trim() : null
+    });
+
+    console.log("[DISCORD RESULT] " + requestId + " -> " + updated.status);
+
+    // Update the original Discord Webhook notification after recording the result.
+    try {
+      await discord.updateLeaveRequestMessage(updated);
+    } catch (discordError) {
+      console.error("Discord Webhook update failed:", discordError);
+    }
+
+    return res.json({
+      message: "Discord result received successfully",
+      data: updated
+    });
+  } catch (error) {
+    console.error("Discord result error:", error);
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+});
+
 // Manager views leave requests
 app.get("/api/boss/leave-requests", (req, res) => {
   const { status } = req.query;

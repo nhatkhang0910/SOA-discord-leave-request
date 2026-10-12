@@ -1,84 +1,59 @@
-# Discord Webhook - Leave Request System
+# Discord Webhook – Leave Request System
 
-> Academic Seminar Project — Discord Webhook / Service-Oriented Architecture
+> Academic seminar project demonstrating a leave-request API integrated with Discord Webhook and a Discord Bot.
 
 ## Team
 
 | Member | Responsibility |
 |---|---|
-| **Gia Hòa** | REST API & Leave Request Service |
-| **Nhật Khang** | Discord Webhook Integration |
-| **Tuấn** | Discord Bot & Interaction |
+| **Gia Hòa** | REST API and leave-request service |
+| **Nhật Khang** | Discord Webhook integration |
+| **Tuấn** | Discord Bot and interactions |
 
-## 1. Project Overview
+## 1. Project overview
 
-This project demonstrates a leave-request workflow integrated with Discord.
+An employee submits a leave request through the REST API. The API sends the official request notification to Discord using a Webhook. A Discord Bot posts **Approve** and **Reject** controls for the manager. After the manager clicks a control, the Bot sends a JSON callback to `POST /api/discord/result`. The API validates the callback, updates the request status, and updates the original Webhook message.
 
-The system uses **Discord Webhook** as the notification channel from the Leave API to Discord. A **Discord Bot** handles manager interactions such as Approve and Reject, then calls the Leave API. The API remains responsible for business logic and updates the original Discord Webhook message.
-
-## 2. Architecture
+## 2. Architecture and workflow
 
 ```text
 Employee
-   |
-   | POST /api/employee/leave-requests
-   v
-Leave API
-   |
-   | Discord Webhook
-   v
-Discord notification message
-   |
-   | Bot sends interaction controls
-   v
-[ Approve ] [ Reject ]
-   |             |
-   |             +--> Reject Modal
-   v
-Discord Bot
-   |
-   | POST /api/boss/leave-requests/:id/approve
-   | POST /api/boss/leave-requests/:id/reject
-   v
-Leave API
-   |
-   | Update business state
-   v
-Store
-   |
-   | PATCH original Discord Webhook message
-   v
-Discord
+  | POST /api/employee/leave-requests
+  v
+Leave Request API -----> Store (in-memory Map)
+  |                            ^
+  | Discord Webhook            | update request status
+  v                            |
+Official Discord notification  |
+                               |
+Discord Bot posts [Approve] [Reject]
+  |                            |
+  | POST /api/discord/result --+
+  |    { requestId, action, reviewerName, reason? }
+  v
+Leave Request API
+  |
+  | PATCH original Webhook message
+  v
+Discord notification shows Approved / Rejected
 ```
 
-### Responsibility separation
+- **REST API:** validates requests and owns the business logic/state changes.
+- **Discord Webhook:** sends the official notification and edits that message when the state changes.
+- **Discord Bot:** presents the action buttons, collects a rejection reason, and forwards the manager's decision to the API.
+- **Store:** uses an in-memory JavaScript `Map` for this seminar demo.
 
-- **Leave API**: request validation, business rules, request state changes.
-- **Discord Webhook**: sends and updates the official leave-request notification.
-- **Discord Bot**: displays Approve/Reject controls and forwards manager actions to the Leave API.
-- **Store**: temporary in-memory storage for the seminar demo.
+## 3. Requirements
 
-## 3. Technology Stack
+Install:
 
-- Node.js 24+
-- Express.js
-- Discord Webhook
-- discord.js 14
-- REST API
-- Postman
-- Git / GitHub
-
-## 4. Prerequisites
-
-Install before the hands-on session:
-
-- Node.js 24+
+- Node.js 18 or newer
 - Git
 - VS Code or another code editor
 - Postman
-- Discord account
+- A Discord account and a Discord server where you can manage a channel
 
-Check installation:
+Verify Node.js and npm:
 
 ```bash
 node -v
@@ -86,17 +61,17 @@ npm -v
 git --version
 ```
 
-## 5. Clone and Install
+## 4. Clone and install
 
 ```bash
-git clone <YOUR_GITHUB_REPOSITORY_URL>
-cd <YOUR_PROJECT_FOLDER>
+git clone https://github.com/nhatkhang0910/SOA-discord-leave-request.git
+cd SOA-discord-leave-request
 npm install
 ```
 
-## 6. Environment Configuration
+## 5. Configure environment variables
 
-Copy `.env.example` to `.env` and fill in your own Discord configuration:
+Create a `.env` file by copying `.env.example`, then replace the sample values with your own Discord settings:
 
 ```env
 DISCORD_WEBHOOK_URL=YOUR_DISCORD_WEBHOOK_URL
@@ -105,151 +80,94 @@ DISCORD_BOT_TOKEN=YOUR_DISCORD_BOT_TOKEN
 PORT=3000
 ```
 
-### Security
+Keep `.env` private. Do not commit or share your real Webhook URL or Bot Token. Only `.env.example` with placeholders belongs in GitHub.
 
-Never commit `.env` to GitHub.
+### Discord setup
 
-Never publish a Discord Webhook URL or Bot Token.
+1. **Create a Webhook:** In the target channel, open **Edit Channel → Integrations → Webhooks → New Webhook**, then copy its URL into `DISCORD_WEBHOOK_URL`.
+2. **Copy the channel ID:** Enable Developer Mode in Discord, right-click the channel, select **Copy Channel ID**, and set `DISCORD_CHANNEL_ID`.
+3. **Create the Bot:** In the Discord Developer Portal, create an application and Bot, then put its token in `DISCORD_BOT_TOKEN`.
+4. **Invite the Bot:** Install it in the same server and grant it permission to view the target channel and send messages. The current interaction flow only needs the `Guilds` intent; it does not require Message Content Intent.
 
-## 7. Discord Setup
+## 6. Run the project
 
-### 7.1 Create a Webhook
-
-In your Discord server:
-
-```text
-Channel Settings
-→ Integrations
-→ Webhooks
-→ New Webhook
-→ Copy Webhook URL
-```
-
-Put the URL into `DISCORD_WEBHOOK_URL`.
-
-### 7.2 Get Channel ID
-
-Enable Developer Mode in Discord, then right-click the target channel and choose **Copy Channel ID**.
-
-Put it into `DISCORD_CHANNEL_ID`.
-
-### 7.3 Create and Install the Bot
-
-In the Discord Developer Portal:
-
-1. Create an Application.
-2. Create a Bot.
-3. Copy the Bot Token into `DISCORD_BOT_TOKEN`.
-4. Enable **Message Content Intent** only if your own extension requires message-content access. The current project does not read ordinary message content for interaction handling.
-5. Install the Bot into your Discord server.
-
-The Bot needs permission to view the target channel and send messages.
-
-## 8. Run the Project
-
-The project starts the API and Discord Bot from the same Node.js process.
+The API and Bot run in the same Node.js process:
 
 ```bash
 npm start
 ```
 
-Expected output:
+Expected logs include messages similar to:
 
 ```text
 Discord Bot is online: <bot-name>
 Server is running at http://localhost:3000
 ```
 
-## 9. Test with Postman
+## 7. Test with Postman
 
-Import:
+Import `postman/Discord-Leave-System.postman_collection.json` into Postman. Start the app before sending requests.
 
-```text
-postman/Discord-Leave-Request.postman_collection.json
-```
+1. Send **Create Leave Request**.
+2. Check the response and copy `data.id` if needed.
+3. Check Discord for the official Webhook message and the Bot's Approve/Reject controls.
+4. Click **Approve** or **Reject** in Discord. Reject opens a modal asking for a reason.
+5. Use **Get Leave Request by UUID** to verify the final status.
 
-The main demo flow is:
+The collection also has simulated Approve and Reject callback requests for testing the API directly. Use a request that is still `pending`; processing the same request twice returns `409 Conflict`.
 
-1. Create Leave Request
-2. Check Discord
-3. Click Approve or Reject
-4. Verify the Discord status message
-5. Check the request status through the API
+## 8. API reference
 
-## 10. API Reference
-
-| Method | Endpoint | Description |
+| Method | Endpoint | Purpose |
 |---|---|---|
-| POST | `/api/employee/leave-requests` | Create a leave request |
-| GET | `/api/employee/leave-requests/:id` | Get request status |
-| GET | `/api/employee/leave-requests/by-employee/:employeeID` | Get employee requests |
-| GET | `/api/boss/leave-requests?status=pending` | Get requests by status |
-| POST | `/api/boss/leave-requests/:id/approve` | Approve a request |
-| POST | `/api/boss/leave-requests/:id/reject` | Reject a request |
+| `POST` | `/api/employee/leave-requests` | Submit a new leave request and notify Discord |
+| `GET` | `/api/employee/leave-requests/:id` | Get a request by UUID |
+| `GET` | `/api/employee/leave-requests/by-employee/:employeeID` | Get requests for an employee |
+| `GET` | `/api/boss/leave-requests?status=pending` | List requests, optionally filtered by status |
+| `POST` | `/api/boss/leave-requests/:id/approve` | Approve through the manager API endpoint |
+| `POST` | `/api/boss/leave-requests/:id/reject` | Reject through the manager API endpoint |
+| `POST` | `/api/discord/result` | Receive the Bot's Approve/Reject callback as JSON |
 
-## 11. Expected Workflow
+Example callback JSON for approval:
 
-### Pending
-
-```text
-📋 Leave Request
-
-🟡 Pending Approval
-
-Manager action required:
-[ ✅ Approve ] [ ❌ Reject ]
+```json
+{
+  "requestId": "<leave-request-uuid>",
+  "action": "approve",
+  "reviewerName": "Manager"
+}
 ```
 
-### Approved
+Example callback JSON for rejection:
 
-```text
-🟢 Approved by <manager>
+```json
+{
+  "requestId": "<leave-request-uuid>",
+  "action": "reject",
+  "reviewerName": "Manager",
+  "reason": "Not enough staff"
+}
 ```
 
-### Rejected
+The rejection reason must contain at least 3 characters.
 
-```text
-🔴 Rejected by <manager>
-Reason: <rejection reason>
-```
+## 9. Error responses
 
-## 12. Error Handling
+- `400 Bad Request`: required data is missing or the callback is invalid.
+- `404 Not Found`: the leave request ID does not exist.
+- `409 Conflict`: the request has already been processed.
+- `500 Internal Server Error`: unexpected server or integration error.
 
-- `400 Bad Request`: required input is missing.
-- `404 Not Found`: request does not exist.
-- `409 Conflict`: request has already been processed.
-- `500 Internal Server Error`: unexpected server or Discord integration error.
+## 10. Known limitations
 
-## 13. Limitations
+- Requests are stored in memory and are lost when the server restarts.
+- The API and Bot are intended for a local seminar demonstration.
+- Authentication and manager authorization are simplified; the callback endpoint should be protected before production use.
+- The project does not use a persistent database.
 
-- Requests are stored in memory using a JavaScript `Map`.
-- Data is lost when the server restarts.
-- API and Bot run locally during the seminar demo.
-- Authentication and manager authorization are simplified for demonstration.
-- The system is not intended for production deployment in its current form.
+## 11. Possible improvements
 
-## 14. Future Improvements
-
-- Replace in-memory storage with PostgreSQL or MongoDB.
-- Add employee and manager authentication.
-- Add manager-role authorization in Discord.
-- Add retry and logging strategies for Discord Webhook failures.
-- Deploy the API and Bot to a server/cloud environment.
-- Add Docker support.
-
-## 15. Project Structure
-
-```text
-.
-├── server.js
-├── discordBot.js
-├── discordService.js
-├── store.js
-├── package.json
-├── package-lock.json
-├── .env.example
-├── .gitignore
-├── README.md
-└── postman/
-    └── Discord-Leave-Request.postman_collection.json
-```
+- Use PostgreSQL or MongoDB for persistent data.
+- Add employee authentication and manager-role authorization.
+- Protect the Bot callback endpoint with authentication/signature verification.
+- Add retry handling, structured logs, automated tests, and deployment configuration.

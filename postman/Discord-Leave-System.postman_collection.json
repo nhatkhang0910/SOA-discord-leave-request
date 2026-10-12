@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "7f9c5d5b-5f4a-4d1f-9a8f-1c5d1c0a2026",
-    "name": "Discord Leave System API",
-    "description": "Postman collection for testing the Discord Leave System REST API.",
+    "name": "Discord Leave Request System",
+    "description": "Test the Leave Request API, including the Discord Bot result callback endpoint.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -56,18 +56,13 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 201', function () {",
-                  "    pm.response.to.have.status(201);",
-                  "});",
-                  "",
-                  "let data = pm.response.json();",
-                  "if (data.data && data.data.id) {",
-                  "    pm.collectionVariables.set('requestId', data.data.id);",
-                  "    console.log('Saved requestId:', data.data.id);",
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data && body.data.id) pm.collectionVariables.set('requestId', body.data.id);",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ]
@@ -196,6 +191,50 @@
                 "reject"
               ]
             }
+          }
+        },
+        {
+          "name": "7. Simulate Discord Approve Callback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"action\": \"approve\",\n  \"reviewerName\": \"Manager\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/discord/result"
+          }
+        },
+        {
+          "name": "8. Simulate Discord Reject Callback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"action\": \"reject\",\n  \"reviewerName\": \"Manager\",\n  \"reason\": \"Not enough staff\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/discord/result"
           }
         }
       ]
